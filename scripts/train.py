@@ -2,9 +2,7 @@
 This file runs the main training/val loop
 """
 import os
-import torch
 import json
-
 import sys
 import pprint
 
@@ -12,7 +10,7 @@ sys.path.append(".")
 sys.path.append("..")
 
 from options.train_options import TrainOptions
-from training.coach_dualencoders import Coach
+from training.coach_encoder_sketch import Coach
 
 
 def main():
@@ -27,7 +25,6 @@ def main():
 		json.dump(opts_dict, f, indent=4, sort_keys=True)
 
 	coach = Coach(opts)
-	#import pdb;pdb.set_trace()
 	coach.train()
 
 
