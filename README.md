@@ -2,7 +2,7 @@
 
 > MSc Dissertation · University of Surrey · Computer Vision, Robotics & Machine Learning · 2024
 
-[!License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](./LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](./LICENSE)
 
 -
 
@@ -38,9 +38,6 @@ Three latent mixing strategies were designed, implemented, and compared:
 
 ---
 
-## Results
-
-![Results](./assets/results.png)
 
 Key findings across mixing strategies:
 
