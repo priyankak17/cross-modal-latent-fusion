@@ -4,7 +4,6 @@
 
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](./LICENSE)
 
--
 
 ## Overview
 
@@ -136,10 +135,6 @@ It covers:
 ---
 
 ## Author
-
-**Priyanka Kamila** · [LinkedIn]([https://linkedin.com/in/priyankakamila]) · [Email](kamilapriyanka17@gmail.com)
-
-MSc Computer Vision, Robotics & Machine Learning — University of Surrey, 2024
 
 
 **Priyanka Kamila** · [LinkedIn](https://linkedin.com/in/yourprofile) · [Email](mailto:your@email.com)
