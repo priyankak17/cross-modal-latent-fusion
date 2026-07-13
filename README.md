@@ -1,166 +1,127 @@
-<<<<<<< HEAD
+# Cross-Modal Latent Fusion for High-Resolution Facial Image Synthesis
+
+**High-resolution facial image synthesis from low-resolution photographs and forensic sketches, via a dual-encoder pSp architecture over StyleGAN2's W+ latent space.**
+
+MSc Dissertation · MSc Computer Vision, Robotics & Machine Learning · University of Surrey · September 2024
+Supervised by Prof. Yi-Zhe Song and Subhadeep Koley
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Live Demo](https://img.shields.io/badge/🤗%20Demo-Playground-yellow.svg)](https://huggingface.co/spaces/pynk17/cross-modal-latent-fusion-playground)
+
 ---
-title: Cross-Modal Latent Fusion Playground
-emoji: 🎭
-colorFrom: yellow
-colorTo: blue
-sdk: gradio
-sdk_version: 5.49.1
-app_file: app.py
-pinned: false
-license: mit
-short_description: Dual-encoder sketch+RGB latent fusion (MSc, Surrey 2024)
----
-
-# Cross-Modal Latent Fusion — Interactive Playground
-
-Live demo of the runnable components of
-[priyankak17/cross-modal-latent-fusion](https://github.com/priyankak17/cross-modal-latent-fusion):
-"High-resolution Facial Image Synthesis from Low-resolution Images and Forensic Sketches"
-(Priyanka Kamila, MSc CVRML, University of Surrey, 2024).
-
-**Tabs**
-1. **Degradation simulator** — `experiments/low_light_experiment.py` (low-light + resolution
-   degradation), with an exact dissertation-parameters mode and L1/L2/PSNR/SSIM/LPIPS metrics.
-2. **Sketch generator** — `scripts/sketch_gen.py` (Sobel-based sketch modality).
-3. **Latent mixing playground** — the six W+ mixing strategies of dissertation §5 on proxy
-   18×512 latents, including a bug-fixed `model/mixer.py`, with per-layer modality attribution.
-
-**Honest scope:** the trained dual-encoder pSp checkpoints are not distributed with the repo,
-so photorealistic StyleGAN2 decoding is out of scope for this CPU Space. Everything shown is
-computed live and was validated quantitatively before publishing (see the "About & repo audit" tab).
-=======
-# Cross-Modal Latent Fusion for Multimodal Generative Modeling
-
-> MSc Dissertation · University of Surrey · Computer Vision, Robotics & Machine Learning · 2024
-
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](./LICENSE)
-
 
 ## Overview
 
-This repository contains the dissertation, model architecture, and experiments for my MSc research on **controllable multimodal image synthesis through cross-modal latent fusion**.
+This project investigates a practical and under-explored problem in generative modelling: how to reconstruct a high-resolution, photorealistic face when the only available evidence is **degraded** — a low-light, low-resolution photograph — and **abstract** — a forensic-style sketch. Each modality is individually insufficient. A sketch carries structure (pose, facial geometry, proportions) but no texture or colour; a degraded photo carries colour and texture cues but little usable detail. The central research question is whether the two can be **fused in latent space** to recover more than either provides alone, and — more interestingly — *which modality a model learns to prioritise when the two disagree.*
 
-The central question: *when a generative model is given two competing input signals and a composite training objective, which signal does it learn to prioritise — and why?*
+The approach uses a **dual-encoder** design built on the pixel2style2pixel (pSp) framework. Each modality is encoded independently into StyleGAN2's extended **W+** latent space, the two sets of style vectors are combined by a latent mixing module, and a frozen, pre-trained StyleGAN2 generator decodes the fused code into a 1024×1024 image. Because both encoders project directly into W+, the method needs **no per-image optimisation** at inference — a notable efficiency advantage over optimisation-based GAN inversion.
 
-Rather than treating this as a pure generation task, the research was designed as an empirical investigation into **how models resolve competing objectives**, with implications for interpretability, controllability, and the gap between specified loss functions and learned behaviour.
+> A key contribution is methodological: the work argues that aggregate reconstruction metrics can *conceal* failure modes, and designs an evaluation around that concern rather than around a single headline score.
 
 ---
 
-## Architecture
+## Method
 
-![Architecture Diagram](./assets/architecture.png)
-
-A **dual-encoder** architecture processes two input modalities in parallel, projecting each into a shared latent space before fusion via `models/mixer.py`:
+### Dual-encoder architecture
 
 ```
-Sketch Input  ──► Encoder A ──►┐
-                                ├──► Latent Mixing Module ──► Decoder ──► Synthesised Image
-RGB Input     ──► Encoder B ──►┘
+Forensic sketch  ──►  Sketch Encoder (pSp)  ──►  W+  ┐
+                                                     ├──►  Latent Mixing  ──►  StyleGAN2 (frozen)  ──►  1024² face
+Low-light / low-res photo  ──►  RGB Encoder (pSp)  ──►  W+  ┘
 ```
 
-Three latent mixing strategies were designed, implemented, and compared:
+- **Sketch encoder** — translates sparse line structure into W+ style vectors, handling line ambiguity and varying sketch detail. Contributes coarse structure.
+- **RGB (low-quality) encoder** — a pSp-based encoder with a Feature Pyramid Network and Map2Style blocks, trained on CelebA-HQ, that maps degraded photographs into W+. Contributes texture and colour.
+- **Frozen StyleGAN2 decoder** — a pre-trained generator used as a fixed decoder, so image quality benefits from large-scale pretraining while training cost stays low.
 
-| Strategy | Description | Key Property |
-|---|---|---|
-| **Feature Interpolation** | Weighted linear combination of latent vectors | Smooth, continuous blending |
-| **Residual Fusion** | Additive residual connection between encoded representations | Preserves modality-specific structure |
-| **Selective Channel Gating** | Learned gating mask selects channels per modality | Sparse, disentangled mixing |
+### Latent mixing strategies
+
+Six strategies for combining the two W+ codes were designed and compared:
+
+| # | Strategy | Idea |
+|---|----------|------|
+| 1 | Weighted Average Mixing (α) | Balanced linear blend of both codes |
+| 2 | Feature Addition & Splitting | Add then re-split features to emphasise shared structure |
+| 3 | Selective Feature Combination | Take coarse (structural) layers from the sketch, fine (texture) layers from the photo |
+| 4 | Residual Learning | Preserve one modality as a base and add the residual of the other |
+| 5 | Feature Scaling | Selectively amplify some feature channels while suppressing others |
+| 6 | Latent Space Interpolation | Interpolate between the two latent vectors |
+
+### Data preparation
+
+Trained on **CelebA-HQ** (30,000 images at 1024², encoder trained at 512²); **FFHQ** used as reference. Paired degraded inputs were synthesised with a controlled pipeline: HSV brightness ×0.3 and saturation ×0.5 (low-light simulation), followed by 30% nearest-neighbour down/up-scaling (resolution/pixelation degradation), preserving a one-to-one correspondence with high-quality ground truth.
 
 ---
 
+## Results
 
-Key findings across mixing strategies:
+Evaluated against ground-truth RGB images using pixel-wise (L1, L2) and perceptual (LPIPS) metrics.
 
-- **Selective Channel Gating** produced the strongest representation disentanglement, allowing each modality to contribute selectively rather than blending uniformly
-- **Residual Fusion** was most stable during training but showed evidence of modality dominance under certain initialisation conditions
-- **Feature Interpolation** produced the smoothest outputs but the least controllable latent structure
-- Models optimising composite loss functions frequently satisfied the metric while deviating from intended generative behaviour — motivating more granular, ablation-driven evaluation design
+**Latent Space Interpolation** was the strongest strategy across all three metrics:
+
+| Metric | Best (Latent Interpolation) | Range across all six strategies |
+|--------|-----------------------------|---------------------------------|
+| L1     | **0.1466**                  | 0.1466 – 0.4085 |
+| L2     | **0.0566**                  | 0.0566 – 0.2943 |
+| LPIPS  | **0.3639**                  | 0.3639 – 0.7433 |
+
+**Key findings**
+
+- In its best cases, latent fusion approaches the quality of pure-RGB reconstruction — evidence that structure and texture *can* be combined constructively.
+- Performance is **highly variable** across samples, indicating instability in the mixing process (likely non-linear interactions in W+ and sensitivity to input characteristics).
+- LPIPS stays comparatively high even when pixel-wise error is low, underscoring that perceptual realism is not captured by pixel metrics alone.
+- The distribution of outcomes is skewed toward degradation rather than enhancement — a concrete instance of a model satisfying a specified objective while deviating from intended behaviour.
 
 ---
 
-## Repository Structure
+## Repository structure
 
 ```
 cross-modal-latent-fusion/
-│
-├── README.md
 ├── dissertation/
-│   └── Priyanka_Kamila_MSc_Dissertation.pdf   # Full MSc dissertation
-│
-├── models/
-│   └── mixer.py                                # Dual-encoder + latent mixing strategies
-│
+│   └── Priyanka_Kamila_MSc_Dissertation.pdf   # full 52-page dissertation
+├── model/
+│   └── mixer.py                               # latent mixing
 ├── experiments/
-│   └── low_light_experiment.py                 # Evaluation under low-light conditions
-│
+│   └── low_light_experiment.py                # degradation pipeline
+├── scripts/                                   # sketch generation, inference, training utilities
+│   ├── sketch_gen.py
+│   └── ...
 ├── utils/
-│   └── visualise.py                            # Latent space and output visualisation
-│
-├── scripts/
-   └── ...                                     # Training and evaluation scripts
-
+│   └── visualise.py                           # output visualisation
+└── README.md
 ```
 
----
-
-## Experiments
-
-### Low-Light Generalisation (`experiments/low_light_experiment.py`)
-
-One of the key evaluation settings investigates model robustness under **low-light input conditions** that is a distribution shift that stress-tests whether the model has learned meaningful latent representations or is exploiting surface-level statistics in the training data.
-
-This experiment is directly motivated by the dissertation's core finding: aggregate metrics can conceal failure modes. A model may achieve low reconstruction loss under standard conditions while its latent representations degrade significantly under mild distribution shift.
+> **Note on reproducibility.** This repository documents the research and shares the mixing, degradation, and evaluation code. The inference/training scripts depend on the upstream [pixel2style2pixel](https://github.com/eladrich/pixel2style2pixel) framework, and the trained dual-encoder checkpoints are not distributed, so end-to-end photorealistic generation is not reproducible from this repository alone. An interactive demo of the *runnable* components degradation, sketch generation, and all six latent-mixing strategies is available below.
 
 ---
 
-## Evaluation Approach
+## Interactive demo
 
-A core contribution of this work is the **evaluation methodology**. Aggregate metrics alone are insufficient to understand *how* a model is mixing; they tell you whether the output looks good, not why.
+A live playground on Hugging Face Spaces demonstrates the degradation simulator, the sketch generator, and all six latent-mixing strategies (with per-layer modality attribution and L1/L2/PSNR/SSIM/LPIPS readouts):
 
-The framework combines:
-
-- **Pixel-wise metrics** — L1, L2 reconstruction loss for fidelity
-- **Perceptual metrics** — LPIPS for perceptual realism beyond pixel distance
-- **Ablation studies** — systematic isolation of architectural decisions to attribute performance to specific design choices
-- **Distribution shift testing** — evaluation under low-light conditions to probe generalisation and representation robustness
+**🤗 [huggingface.co/spaces/pynk17/cross-modal-latent-fusion-playground](https://huggingface.co/spaces/pynk17/cross-modal-latent-fusion-playground)**
 
 ---
 
-## Relevance to Broader Research
+## Why this work
 
-The methodological approach developed here, designing experiments to understand *how* a model resolves competing objectives, rather than just *whether* it performs well, transfers directly to problems in:
+The methodology of designing experiments to understand *how* a model resolves competing objectives, not merely *whether* it scores well, connects directly to broader questions in interpretability, robustness evaluation, and the gap between a specified training objective and learned behaviour. The recurring observation that the model optimises a measured proxy while diverging from the intended goal is a small, empirical encounter with the objective-misspecification problems that motivate much current work in reliable and safe machine learning.
 
-- **Interpretability**: Understanding which inputs a model attends to under a composite objective
-- **Alignment research**: Empirically studying the gap between specified training objectives and learned behaviour
-- **Robustness evaluation**: Building evaluation frameworks that expose failure modes concealed by aggregate metrics
-
-The recurring finding that models optimise for measured proxies rather than intended objectives, which is achieving low loss while deviating from desired behaviour, is a concrete encounter with the kind of objective misspecification problem that motivates much of the current empirical AI safety literature.
-
----
-
-## Reading the Dissertation
-
-The full dissertation is available in [`dissertation/Priyanka_Kamila_MSc_Dissertation.pdf`](./dissertation/Priyanka_Kamila_MSc_Dissertation.pdf).
-
-It covers:
-- Motivation and related work in multimodal generative modeling
-- Architecture design and mixing strategy formulation
-- Training methodology and loss function design
-- Experimental results and ablation analysis
-- Discussion of failure modes and directions for future work
+**Ethics.** Facial reconstruction from sketches and degraded imagery has clear forensic value but equally clear potential for misuse and demographic bias. This work is intended for research and education; generated outputs should not be treated as reliable identifications of real individuals. These considerations are discussed further in the dissertation.
 
 ---
 
 ## Citation
 
 ```bibtex
-@mastersthesis{kamila2024latent,
-  title     = {Cross-Modal Latent Fusion for Multimodal Generative Modeling},
-  author    = {Kamila, Priyanka},
-  school    = {University of Surrey},
-  year      = {2024},
-  program   = {MSc Computer Vision, Robotics and Machine Learning}
+@mastersthesis{kamila2024crossmodal,
+  title   = {High-resolution Facial Image Synthesis from Low-resolution Images and Forensic Sketches},
+  author  = {Kamila, Priyanka},
+  school  = {University of Surrey},
+  year    = {2024},
+  program = {MSc Computer Vision, Robotics and Machine Learning},
+  note    = {Supervised by Prof. Yi-Zhe Song and Subhadeep Koley}
 }
 ```
 
@@ -168,8 +129,12 @@ It covers:
 
 ## Author
 
-
-**Priyanka Kamila** · [LinkedIn](https://linkedin.com/in/yourprofile) · [Email](mailto:your@email.com)
-
+**Priyanka Kamila**
 MSc Computer Vision, Robotics & Machine Learning — University of Surrey, 2024
->>>>>>> github/main
+
+<!-- Update these links before publishing -->
+[LinkedIn](https://linkedin.com/in/your-handle) · [Email](mailto:you@example.com)
+
+---
+
+*Built on [pixel2style2pixel](https://github.com/eladrich/pixel2style2pixel) and [StyleGAN2](https://github.com/NVlabs/stylegan2). Grateful to Prof. Yi-Zhe Song and Subhadeep Koley for supervision.*
