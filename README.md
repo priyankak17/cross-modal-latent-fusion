@@ -133,7 +133,7 @@ The methodology of designing experiments to understand *how* a model resolves co
 MSc Computer Vision, Robotics & Machine Learning — University of Surrey, 2024
 
 <!-- Update these links before publishing -->
-[LinkedIn](https://linkedin.com/in/your-handle) · [Email](mailto:you@example.com)
+[LinkedIn](https://linkedin.com/in/priyanka-kamila) · [Email](mailto:kamilapriyanka@gmail.com)
 
 ---
 
