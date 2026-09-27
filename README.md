@@ -12,9 +12,9 @@ Supervised by Prof. Yi-Zhe Song and Subhadeep Koley
 
 ## Overview
 
-This project investigates a practical and under-explored problem in generative modelling: how to reconstruct a high-resolution, photorealistic face when the only available evidence is **degraded** — a low-light, low-resolution photograph — and **abstract** — a forensic-style sketch. Each modality is individually insufficient. A sketch carries structure (pose, facial geometry, proportions) but no texture or colour; a degraded photo carries colour and texture cues but little usable detail. The central research question is whether the two can be **fused in latent space** to recover more than either provides alone, and — more interestingly — *which modality a model learns to prioritise when the two disagree.*
+This project investigates a practical and under-explored problem in generative modelling: how to reconstruct a high-resolution, photorealistic face when the only available evidence is **degraded** a low-light, low-resolution photograph and **abstract** a forensic-style sketch. Each modality is individually insufficient. A sketch carries structure (pose, facial geometry, proportions) but no texture or colour; a degraded photo carries colour and texture cues but little usable detail. The central research question is whether the two can be **fused in latent space** to recover more than either provides alone, and more interestingly *which modality a model learns to prioritise when the two disagree.*
 
-The approach uses a **dual-encoder** design built on the pixel2style2pixel (pSp) framework. Each modality is encoded independently into StyleGAN2's extended **W+** latent space, the two sets of style vectors are combined by a latent mixing module, and a frozen, pre-trained StyleGAN2 generator decodes the fused code into a 1024×1024 image. Because both encoders project directly into W+, the method needs **no per-image optimisation** at inference — a notable efficiency advantage over optimisation-based GAN inversion.
+The approach uses a **dual-encoder** design built on the pixel2style2pixel (pSp) framework. Each modality is encoded independently into StyleGAN2's extended **W+** latent space, the two sets of style vectors are combined by a latent mixing module, and a frozen, pre-trained StyleGAN2 generator decodes the fused code into a 1024×1024 image. Because both encoders project directly into W+, the method needs **no per-image optimisation** at inference a notable efficiency advantage over optimisation-based GAN inversion.
 
 > A key contribution is methodological: the work argues that aggregate reconstruction metrics can *conceal* failure modes, and designs an evaluation around that concern rather than around a single headline score.
 
@@ -30,9 +30,9 @@ Forensic sketch  ──►  Sketch Encoder (pSp)  ──►  W+  ┐
 Low-light / low-res photo  ──►  RGB Encoder (pSp)  ──►  W+  ┘
 ```
 
-- **Sketch encoder** — translates sparse line structure into W+ style vectors, handling line ambiguity and varying sketch detail. Contributes coarse structure.
-- **RGB (low-quality) encoder** — a pSp-based encoder with a Feature Pyramid Network and Map2Style blocks, trained on CelebA-HQ, that maps degraded photographs into W+. Contributes texture and colour.
-- **Frozen StyleGAN2 decoder** — a pre-trained generator used as a fixed decoder, so image quality benefits from large-scale pretraining while training cost stays low.
+- **Sketch encoder**: translates sparse line structure into W+ style vectors, handling line ambiguity and varying sketch detail. Contributes coarse structure.
+- **RGB (low-quality) encoder**: a pSp-based encoder with a Feature Pyramid Network and Map2Style blocks, trained on CelebA-HQ, that maps degraded photographs into W+. Contributes texture and colour.
+- **Frozen StyleGAN2 decoder**: a pre-trained generator used as a fixed decoder, so image quality benefits from large-scale pretraining while training cost stays low.
 
 ### Latent mixing strategies
 
@@ -67,10 +67,10 @@ Evaluated against ground-truth RGB images using pixel-wise (L1, L2) and perceptu
 
 **Key findings**
 
-- In its best cases, latent fusion approaches the quality of pure-RGB reconstruction — evidence that structure and texture *can* be combined constructively.
+- In its best cases, latent fusion approaches the quality of pure-RGB reconstruction evidence that structure and texture *can* be combined constructively.
 - Performance is **highly variable** across samples, indicating instability in the mixing process (likely non-linear interactions in W+ and sensitivity to input characteristics).
 - LPIPS stays comparatively high even when pixel-wise error is low, underscoring that perceptual realism is not captured by pixel metrics alone.
-- The distribution of outcomes is skewed toward degradation rather than enhancement — a concrete instance of a model satisfying a specified objective while deviating from intended behaviour.
+- The distribution of outcomes is skewed toward degradation rather than enhancement, a concrete instance of a model satisfying a specified objective while deviating from intended behaviour.
 
 ---
 
@@ -92,7 +92,7 @@ cross-modal-latent-fusion/
 └── README.md
 ```
 
-> **Note on reproducibility.** This repository documents the research and shares the mixing, degradation, and evaluation code. The inference/training scripts depend on the upstream [pixel2style2pixel](https://github.com/eladrich/pixel2style2pixel) framework, and the trained dual-encoder checkpoints are not distributed, so end-to-end photorealistic generation is not reproducible from this repository alone. An interactive demo of the *runnable* components degradation, sketch generation, and all six latent-mixing strategies is available below.
+> **Note on reproducibility.** This repository documents the research and shares the mixing, degradation, and evaluation code. The inference/training scripts depend on the upstream [pixel2style2pixel](https://github.com/eladrich/pixel2style2pixel) framework, and the trained dual-encoder checkpoints are not distributed, so end-to-end photorealistic generation is not reproducible from this repository alone. An interactive demo of the *runnable* components, degradation, sketch generation, and all six latent-mixing strategies is available below.
 
 ---
 
